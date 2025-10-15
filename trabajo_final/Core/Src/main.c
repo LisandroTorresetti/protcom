@@ -21,6 +21,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
+#include <stdint.h>
+#include "API_ht_sensor.h"
+#include "API_cmdparser.h"
+#include "API_lcd.h"
 
 /* USER CODE END Includes */
 
@@ -95,12 +100,28 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
+  if (!lcd_init()) {
+	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  while (1);
+  }
+
+  if (!ht_init()) {
+	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  while (1);
+  }
+
+  if (!cmdparser_init()) {
+	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  while (1);
+  }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  cmdparser_read_cmd();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
