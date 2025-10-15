@@ -3,6 +3,14 @@
 #include "API_actions.h"
 #include <string.h>
 
+// Error definitions
+#define  CMDPARSER_ERR_INVALID_CMD (ERR_BASE_CMDPARSER + 2)
+#define  CMDPARSER_ERR_UNKNOWN_CMD (ERR_BASE_CMDPARSER + 3)
+#define  CMDPARSER_ERR_OVERFLOW (ERR_BASE_CMDPARSER + 4)
+#define  CMDPARSER_ERR_ARGS (ERR_BASE_CMDPARSER + 5)
+#define  CMDPARSER_ERR_INTERNAL (ERR_BASE_CMDPARSER + 6)
+#define  CMDPARSER_ERR_UNKNOWN (ERR_BASE_CMDPARSER + 7)
+
 #define MAX_CMD_LENGTH 25
 #define MAX_ARGS 3 // cmd + arg1 + arg2
 #define ERR_MSG_MAX_LENGTH 50
@@ -19,16 +27,6 @@ typedef enum {
   ERROR_STATE,
 } state_t;
 
-typedef enum {
-  ERR_INVALID_CMD,
-  ERR_UNKNOWN_CMD,
-  ERR_OVERFLOW,
-  ERR_ARGS,
-  ERR_INTERNAL,
-  ERR_UNKNOWN,
-  NO_ERROR,
-} error_t;
-
 // Valid Commands
 static uint8_t HELP_CMD[] = "HELP";
 static uint8_t GET_CMD[] = "GET";
@@ -43,7 +41,7 @@ static uint8_t *VALID_CMDS[] = {
 static uint8_t PROMPT[] = "\r\n> ";
 
 static state_t system_state;
-static error_t error_code;
+static app_err_t error_code;
 
 static uint8_t cmd_buffer_idx;
 // cmd_buffer: this is where the data coming from UART is stored.
@@ -58,7 +56,7 @@ static ht_measurement_t measurement;
 // Prototypes
 static void cmdparser_reset();
 static void set_idle_state();
-static void set_error_state(error_t err);
+static void set_error_state(app_err_t err);
 static void set_state(state_t state);
 
 static void handle_idle_state();
@@ -82,15 +80,15 @@ static void echo(uint8_t* pstring);
  * @return true if the cmdparser was initialized correctly, otherwise false
  *
  */
-bool cmdparser_init() {
-	if (!uartInit()) {
-		return false;
+app_err_t cmdparser_init() {
+	if (uartInit() != APP_OK) {
+		return CMDPARSER_ERR_INIT;
 	}
 
 	set_idle_state();
 	cmd_buffer_idx = 0;
 
-	return true;
+	return APP_OK;
 }
 
 /**
@@ -147,11 +145,11 @@ void set_state(state_t state) {
  */
 void set_idle_state() {
 	set_state(IDLE);
-	error_code = NO_ERROR;
+	error_code = APP_OK;
 	idle_check_flag = false;
 }
 
-void set_error_state(error_t err) {
+void set_error_state(app_err_t err) {
 	set_state(ERROR_STATE);
 	error_code = err;
 }
@@ -213,7 +211,7 @@ void handle_recv_state() {
 
 		while(*pointer) {
 			if (cmd_buffer_idx >= MAX_CMD_LENGTH) {
-				set_error_state(ERR_OVERFLOW);
+				set_error_state(CMDPARSER_ERR_OVERFLOW);
 				return;
 			}
 
@@ -247,7 +245,7 @@ void handle_parse_state() {
 	while (*cmd_iterator) {
 		if (*cmd_iterator == ' ') {
 			if (token_idx >= MAX_ARGS) {
-				set_error_state(ERR_ARGS);
+				set_error_state(CMDPARSER_ERR_ARGS);
 				return;
 			}
 
@@ -266,7 +264,7 @@ void handle_parse_state() {
 		uint8_t character = *cmd_iterator++;
 
 		if (!is_valid_char(character)) {
-			set_error_state(ERR_INVALID_CMD);
+			set_error_state(CMDPARSER_ERR_INVALID_CMD);
 			return;
 		}
 
@@ -279,7 +277,7 @@ void handle_parse_state() {
 
 	// Check if command exists
 	if (!command_exists(cmd_tokens[0])) {
-		set_error_state(ERR_UNKNOWN_CMD);
+		set_error_state(CMDPARSER_ERR_UNKNOWN_CMD);
 		return;
 	}
 
@@ -308,7 +306,7 @@ void handle_exec_state() {
 	if (!strcmp(char_cmd, (char*)HELP_CMD)) {
 		help_action();
 	} else {
-		set_error_state(ERR_UNKNOWN);
+		set_error_state(CMDPARSER_ERR_UNKNOWN);
 		return;
 	}
 
@@ -326,12 +324,13 @@ void handle_measure_state() {
 	}
 
 	if (amount_of_args > 2) {
-		set_error_state(ERR_ARGS);
+		set_error_state(CMDPARSER_ERR_ARGS);
 		return;
 	}
 
-	if (!measurement_action(cmd_tokens[1], cmd_tokens[2])) {
-		set_error_state(ERR_INTERNAL);
+	app_err_t err = measurement_action(cmd_tokens[1], cmd_tokens[2]);
+	if (err != APP_OK) {
+		set_error_state(err);
 		return;
 	}
 
@@ -341,8 +340,9 @@ void handle_measure_state() {
 void handle_read_data_state() {
 	// Clear values from last read
 	measurement = (ht_measurement_t){0};
-	if (!read_measurement_action(&measurement)) {
-		set_error_state(ERR_INTERNAL);
+	app_err_t err = read_measurement_action(&measurement);
+	if (err != APP_OK) {
+		set_error_state(err);
 		return;
 	}
 
@@ -350,16 +350,19 @@ void handle_read_data_state() {
 }
 
 void handle_show_data_state() {
-	if (!show_measurement_action(&measurement)) {
-		set_error_state(ERR_INTERNAL);
+	app_err_t err = show_measurement_action(&measurement);
+	if (err != APP_OK) {
+		set_error_state(err);
+		return;
 	}
 
 	cmdparser_reset();
 }
 
 void handle_reset_state() {
-	if (!reset_action()) {
-		set_error_state(ERR_INTERNAL);
+	app_err_t err = reset_action();
+	if (err != APP_OK) {
+		set_error_state(err);
 		return;
 	}
 
@@ -378,13 +381,13 @@ void handle_error_state() {
 	// TODO: add more error messages, or move this to an error handler
 
 	switch (error_code) {
-	case ERR_OVERFLOW:
+	case CMDPARSER_ERR_OVERFLOW:
 		strcpy((char*)error_msg, "\n\rERROR: line too long");
 		break;
-	case ERR_ARGS:
+	case CMDPARSER_ERR_ARGS:
 		strcpy((char*)error_msg, "\n\rERROR: bad args");
 		break;
-	case ERR_UNKNOWN:
+	case CMDPARSER_ERR_UNKNOWN:
 		strcpy((char*)error_msg, "\n\rERROR: unknown cmd");
 		break;
 	default:

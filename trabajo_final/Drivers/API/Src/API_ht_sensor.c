@@ -44,68 +44,74 @@ static const uint8_t THIRD_BIT_MASK = 0x08;
 static ht_query_t query;
 
 // Prototypes
-static bool set_operation(ht_query_t* query, uint8_t* operation);
-static bool set_temp_unit(ht_query_t* query, uint8_t* unit);
-static bool ht_get_temp_and_hum(double* temp, double* hum);
+static app_err_t set_operation(ht_query_t* query, uint8_t* operation);
+static app_err_t set_temp_unit(ht_query_t* query, uint8_t* unit);
+static app_err_t ht_get_temp_and_hum(double* temp, double* hum);
 static double convert_temp(double temp);
 static uint8_t* unit_to_string();
 
-bool ht_init() {
+app_err_t ht_init() {
 	HAL_Delay(40);
 	bool init_cmd_triggered = false;
 	uint8_t retry_counter = 0;
 
-	if (!write_command(&STATUS_CMD, 1)) {
-		return false;
+	if (write_command(&STATUS_CMD, 1) != APP_OK) {
+		return APP_ERR_INTERNAL;
 	}
 
 check_status:
 	HAL_Delay(10);
 	uint8_t buffer_status = {0};
-	if (!read_data(&buffer_status, STATUS_RESPONSE_SIZE)) {
-		return false;
+	if (read_data(&buffer_status, STATUS_RESPONSE_SIZE) != APP_OK) {
+		return APP_ERR_INTERNAL;
 	}
 
 	if ((buffer_status & THIRD_BIT_MASK) >> 3) {
 		// Already initialized
-		return true;
+		return APP_OK;
 	}
 
-	if (!init_cmd_triggered && !write_command(INIT_CMD, sizeof(INIT_CMD))) {
-		return false;
+	if (!init_cmd_triggered && write_command(INIT_CMD, sizeof(INIT_CMD)) != APP_OK) {
+		return HT_ERR_INIT_SENSOR;
 	}
 
 	init_cmd_triggered = true;
 	retry_counter++;
 
 	if (retry_counter > MAX_RETRIES) {
-		return false;
+		return HT_ERR_INIT_SENSOR;
 	}
 
 	goto check_status;
 }
 
-bool ht_query_init(ht_query_t* query, uint8_t* operation, uint8_t* unit) {
-	return set_operation(query, operation) && set_temp_unit(query, unit);
+app_err_t ht_query_init(ht_query_t* query, uint8_t* operation, uint8_t* unit) {
+	app_err_t err = set_operation(query, operation);
+	if (err != APP_OK) {
+		return err;
+	}
+
+	return set_temp_unit(query, unit);
 }
 
-bool ht_trigger_measurement(ht_query_t ht_query) {
-	if (!write_command(TRIGGER_MEASURE_CMD, sizeof(TRIGGER_MEASURE_CMD))) {
-		return false;
+app_err_t ht_trigger_measurement(ht_query_t ht_query) {
+	if (write_command(TRIGGER_MEASURE_CMD, sizeof(TRIGGER_MEASURE_CMD)) != APP_OK) {
+		return HT_ERR_MEASURING;
 	}
 
 	query = ht_query;
-	return true;
+	return APP_OK;
 }
 
-bool ht_read_measurement(ht_measurement_t* measurement) {
+app_err_t ht_read_measurement(ht_measurement_t* measurement) {
 	if (measurement == NULL) {
-		return false;
+		return APP_ERR_INVALID_ARG;
 	}
 
 	double temp, hum;
-	if (!ht_get_temp_and_hum(&temp, &hum)) {
-		return false;
+	app_err_t err = ht_get_temp_and_hum(&temp, &hum);
+	if (err != APP_OK) {
+		return err;
 	}
 
 	temp = convert_temp(temp);
@@ -134,32 +140,33 @@ bool ht_read_measurement(ht_measurement_t* measurement) {
 		measurement->temp_data.unit = unit_to_string();
 	}
 
-	return true;
+	return APP_OK;
 }
 
-bool ht_reset() {
-	if (!write_command(&RESET_CMD, sizeof(RESET_CMD))) {
-		return false;
+app_err_t ht_reset() {
+	app_err_t err = write_command(&RESET_CMD, sizeof(RESET_CMD));
+	if (err != APP_OK) {
+		return HT_ERR_RESET;
 	}
 
-	return ht_init();
+	return ht_init() != APP_OK ? HT_ERR_RESET : APP_OK;
 }
 
-bool ht_get_temp_and_hum(double* temp, double* hum) {
+app_err_t ht_get_temp_and_hum(double* temp, double* hum) {
 	HAL_Delay(80);
 
 	uint8_t read_status = {0};
 	do {
-		if (!read_data(&read_status, STATUS_RESPONSE_SIZE)) {
-			return false;
+		if (read_data(&read_status, STATUS_RESPONSE_SIZE) != APP_OK) {
+			return HT_ERR_READ_MEASUREMENT;
 		}
 
 	} while (read_status >> 7);
 
 
 	uint8_t sensor_data_buffer[1] = {0};
-	if (!read_data(sensor_data_buffer, MEASURE_RESPONSE_SIZE)) {
-		return false;
+	if (read_data(sensor_data_buffer, MEASURE_RESPONSE_SIZE) != APP_OK) {
+		return HT_ERR_READ_MEASUREMENT;
 	}
 
 	uint32_t raw_hum = ((uint32_t)sensor_data_buffer[HIGH_HUM_BYTE_IDX] << 12) |
@@ -179,55 +186,58 @@ bool ht_get_temp_and_hum(double* temp, double* hum) {
 	*temp = result_temp;
 	*hum = result_hum;
 
-	return true;
+	return APP_OK;
 }
 
-bool set_operation(ht_query_t* query, uint8_t* operation) {
-	char* op = (char*)operation;
+app_err_t set_operation(ht_query_t* query, uint8_t* operation) {
+	if (query == NULL || operation == NULL) {
+		return APP_ERR_INVALID_ARG;
+	}
 
+	char* op = (char*)operation;
 	if (!strcmp(op, (char*)TEMP_OP_STR)) {
 		query->op = TEMP_OP;
-		return true;
+		return APP_OK;
 	}
 
 	if (!strcmp(op, (char*)HUM_OP_STR)) {
 		query->op = HUM_OP;
-		return true;
+		return APP_OK;
 	}
 
 	if (!strcmp(op, (char*)TEMP_HUM_OP_STR)) {
 		query->op = TEMP_HUM_OP;
-		return true;
+		return APP_OK;
 	}
 
 
-	return false;
+	return HT_ERR_INVALID_OPERATION;
 }
 
 
-bool set_temp_unit(ht_query_t* query, uint8_t* unit) {
+app_err_t set_temp_unit(ht_query_t* query, uint8_t* unit) {
 	if (query == NULL || unit == NULL) {
-		return false;
+		return APP_ERR_INVALID_ARG;
 	}
 
 	uint8_t unit_char = *unit;
 
 	if (unit_char == '\0' || unit_char == CELSIUS_UNIT_CHAR) {
 		query->unit = CELSIUS;
-		return true;
+		return APP_OK;
 	}
 
 	if (unit_char == KELVIN_UNIT_CHAR) {
 		query->unit = KELVIN;
-		return true;
+		return APP_OK;
 	}
 
 	if (unit_char == FARENHEIT_UNIT_CHAR) {
 		query->unit = FARENHEIT;
-		return true;
+		return APP_OK;
 	}
 
-	return false;
+	return HT_ERR_INVALID_UNIT;
 }
 
 double convert_temp(double temp) {

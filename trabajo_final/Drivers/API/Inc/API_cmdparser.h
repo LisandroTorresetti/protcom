@@ -2,8 +2,11 @@
 #define API_INC_API_CMDPARSER_H_
 
 #include <stdbool.h>
+#include "error.h"
 
-bool cmdparser_init();
+#define CMDPARSER_ERR_INIT (ERR_BASE_CMDPARSER + 1)
+
+app_err_t cmdparser_init();
 
 void cmdparser_read_cmd();
 

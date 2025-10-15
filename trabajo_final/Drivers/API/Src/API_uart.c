@@ -1,27 +1,10 @@
 #include "API_uart.h"
 #include "stm32f4xx_hal.h"
 
-// Error messages
-static uint8_t RX_ERROR_MSG[] =  "error receiving message";
-static uint8_t TX_ERROR_MSG[] =  "error transmitting the message";
-static uint8_t INTERNAL_ERROR_MSG[] =  "internal error";
-
 // Rx/Tx timeout
 static const uint32_t TIMEOUT = 1000;
 
 static UART_HandleTypeDef uart_handler;
-
-static const uint8_t CONFIG_JSON[] =
-		"\033[2J{\r\n"
-			"\t\"BaudRate\": 9600,\r\n"
-			"\t\"WordLength\": \"UART_WORDLENGTH_9B\",\r\n"
-			"\t\"StopBits\": \"UART_STOPBITS_1\",\r\n"
-			"\t\"Parity\": \"UART_PARITY_ODD\",\r\n"
-			"\t\"HwFlowCtl\": \"UART_HWCONTROL_NONE\",\r\n"
-			"\t\"Mode\": \"UART_MODE_TX_RX\",\r\n"
-			"\t\"OverSampling\": \"UART_OVERSAMPLING_16\",\r\n"
-			"\t\"Instance\": \"USART2\"\r\n"
-		"}\r\n";
 
 // Prototypes
 static void send_error_msg(uint8_t* error_msg);
@@ -45,7 +28,7 @@ static uint16_t get_string_length(const uint8_t* pstring);
  * @return TRUE if the UART was successfully initialized,
  *         FALSE otherwise.
  */
-bool uartInit() {
+app_err_t uartInit() {
 	UART_InitTypeDef uart_init_config = {
 			.BaudRate = 9600,
 			.WordLength = UART_WORDLENGTH_9B,
@@ -60,16 +43,10 @@ bool uartInit() {
 	uart_handler.Init = uart_init_config;
 
 	if (HAL_UART_Init(&uart_handler) != HAL_OK) {
-		return false;
+		return UART_ERR_INIT;
 	}
 
-	uint16_t config_length = get_string_length(CONFIG_JSON);
-	if (HAL_UART_Transmit(&uart_handler, CONFIG_JSON, config_length, TIMEOUT) != HAL_OK) {
-		send_error_msg(TX_ERROR_MSG);
-		return false;
-	}
-
-	return true;
+	return APP_OK;
 }
 
 /**
@@ -83,14 +60,13 @@ bool uartInit() {
  * @note if a NULL pointer is received, an error message is sent
  *
  */
-void uartSendString(uint8_t* pstring) {
+app_err_t uartSendString(uint8_t* pstring) {
 	if (pstring == NULL) {
-		send_error_msg(INTERNAL_ERROR_MSG);
-		return;
+		return APP_ERR_INVALID_ARG;
 	}
 
 	uint16_t str_length = get_string_length(pstring);
-	uartSendStringSize(pstring, str_length);
+	return uartSendStringSize(pstring, str_length);
 }
 
 /**
@@ -104,16 +80,13 @@ void uartSendString(uint8_t* pstring) {
  * @note if a NULL pointer is received, an error message is sent
  *
  */
-void uartSendStringSize(uint8_t* pstring, uint16_t size) {
+app_err_t uartSendStringSize(uint8_t* pstring, uint16_t size) {
 	if (pstring == NULL || size == 0) {
-		send_error_msg(INTERNAL_ERROR_MSG);
-		return;
+		return APP_ERR_INVALID_ARG;
 	}
 
 
-	if (HAL_UART_Transmit(&uart_handler, pstring, size, TIMEOUT) != HAL_OK) {
-		send_error_msg(TX_ERROR_MSG);
-	}
+	return (HAL_UART_Transmit(&uart_handler, pstring, size, TIMEOUT) != HAL_OK) ? UART_ERR_TX : APP_OK;
 }
 
 /**
@@ -127,27 +100,12 @@ void uartSendStringSize(uint8_t* pstring, uint16_t size) {
  * @note if a NULL pointer is received, an error message is sent
  *
  */
-void uartReceiveStringSize(uint8_t* pstring, uint16_t size) {
+app_err_t uartReceiveStringSize(uint8_t* pstring, uint16_t size) {
 	if (pstring == NULL || size == 0) {
-		send_error_msg(INTERNAL_ERROR_MSG);
-		return;
+		return APP_ERR_INVALID_ARG;
 	}
 
-	if (HAL_UART_Receive(&uart_handler, pstring, size, TIMEOUT) != HAL_OK) {
-		// For exercise one uncomment the following line
-		//send_error_msg(RX_ERROR_MSG);
-	}
-}
-
-/**
- * @brief sends an error message
- * *
- * @param erro_msg  Message to be sent
- *
- */
-void send_error_msg(uint8_t* error_msg) {
-	uint16_t msg_length = get_string_length(error_msg);
-	uartSendStringSize(error_msg, msg_length);
+	return (HAL_UART_Receive(&uart_handler, pstring, size, TIMEOUT) != HAL_OK) ? UART_ERR_RX : APP_OK;
 }
 
 /**

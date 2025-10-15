@@ -3,15 +3,20 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "error.h"
 
-bool lcd_init();
+#define LCD_ERR_INIT (ERR_BASE_LCD + 1)
+#define LCD_ERR_SENDING_CMD (ERR_BASE_LCD + 2)
+#define LCD_ERR_SENDING_DATA (ERR_BASE_LCD + 2)
 
-bool lcd_clear_screen();
+app_err_t lcd_init();
 
-bool lcd_set_cursor(uint8_t row, uint8_t col);
+app_err_t lcd_clear_screen();
 
-bool lcd_print(uint8_t* message);
+app_err_t lcd_set_cursor(uint8_t row, uint8_t col);
 
-bool lcd_println(uint8_t* message);
+app_err_t lcd_print(uint8_t* message);
+
+app_err_t lcd_println(uint8_t* message);
 
 #endif /* API_INC_API_LCD_H_ */

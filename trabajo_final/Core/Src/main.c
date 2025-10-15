@@ -26,6 +26,7 @@
 #include "API_ht_sensor.h"
 #include "API_cmdparser.h"
 #include "API_lcd.h"
+#include "error.h"
 
 /* USER CODE END Includes */
 
@@ -100,17 +101,17 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
-  if (!lcd_init()) {
+  if (cmdparser_init() != APP_OK) {
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	  while (1);
   }
 
-  if (!ht_init()) {
+  if (lcd_init() != APP_OK) {
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	  while (1);
   }
 
-  if (!cmdparser_init()) {
+  if (ht_init() != APP_OK) {
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	  while (1);
   }

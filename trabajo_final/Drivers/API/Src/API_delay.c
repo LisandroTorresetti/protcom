@@ -30,7 +30,7 @@ void delayInit( delay_t * delay, tick_t duration ) {
  *  - If the delay time has already been met, 'running' state of delay_t will be set to false
  *  - In case of a null pointer, it returns false
  */
-bool_t delayRead( delay_t * delay ) {
+bool delayRead( delay_t * delay ) {
 	if (delay == NULL) {
 		return false;
 	}
@@ -73,7 +73,7 @@ void delayWrite( delay_t * delay, tick_t duration ) {
  *
  * @return FALSE if the given delay is NULL or it it's state is 'not running', otherwise TRUE
  */
-bool_t delayIsRunning(delay_t * delay) {
+bool delayIsRunning(delay_t * delay) {
 	return delay != NULL && delay->running;
 }
 
