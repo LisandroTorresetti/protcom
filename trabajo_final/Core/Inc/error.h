@@ -18,4 +18,6 @@ typedef int32_t app_err_t;
 #define ERR_BASE_CMDPARSER  0x4000
 #define ERR_BASE_I2C  		0x5000
 
+uint8_t* app_err_to_name(app_err_t err);
+
 #endif /* INC_ERROR_H_ */

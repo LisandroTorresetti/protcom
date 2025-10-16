@@ -385,25 +385,9 @@ void handle_reset_state() {
  *
  */
 void handle_error_state() {
-	uint8_t error_msg[ERR_MSG_MAX_LENGTH];
+	uint8_t* err_name = app_err_to_name(error_code);
 
-	// TODO: add more error messages, or move this to an error handler
-
-	switch (error_code) {
-	case CMDPARSER_ERR_OVERFLOW:
-		strcpy((char*)error_msg, "\n\rERROR: line too long");
-		break;
-	case CMDPARSER_ERR_ARGS:
-		strcpy((char*)error_msg, "\n\rERROR: bad args");
-		break;
-	case CMDPARSER_ERR_UNKNOWN:
-		strcpy((char*)error_msg, "\n\rERROR: unknown cmd");
-		break;
-	default:
-		strcpy((char*)error_msg, "\n\rERROR: unknown");
-	}
-
-	uartSendString(error_msg);
+	uartSendString(err_name);
 	cmdparser_reset();
 }
 

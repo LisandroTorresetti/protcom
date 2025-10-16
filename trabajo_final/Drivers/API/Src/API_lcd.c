@@ -106,6 +106,7 @@ app_err_t lcd_init() {
  *
  */
 app_err_t lcd_clear_screen() {
+	current_row = FIRST_ROW_ADDRESS;
 	return send_commands(CLEAR_SEQUENCE, 2);
 }
 
@@ -171,8 +172,8 @@ app_err_t lcd_println(uint8_t* message) {
 		return err;
 	}
 
-	uint8_t new_row = (current_row == FIRST_ROW_ADDRESS) ? SECOND_ROW_ADDRESS : FIRST_ROW_ADDRESS;
-	return lcd_set_cursor(new_row,0);
+	uint8_t new_row = (current_row == FIRST_ROW_ADDRESS) ? 1 : 0;
+	return lcd_set_cursor(new_row, 0);
 }
 
 app_err_t send_commands(uint8_t* cmds, uint8_t size) {
