@@ -7,7 +7,9 @@
 
 #define LCD_ERR_INIT (ERR_BASE_LCD + 1)
 #define LCD_ERR_SENDING_CMD (ERR_BASE_LCD + 2)
-#define LCD_ERR_SENDING_DATA (ERR_BASE_LCD + 2)
+#define LCD_ERR_SENDING_DATA (ERR_BASE_LCD + 3)
+#define LCD_ERR_INVALID_ROW_IDX (ERR_BASE_LCD + 4)
+#define LCD_ERR_INVALID_COL_IDX (ERR_BASE_LCD + 5)
 
 app_err_t lcd_init();
 

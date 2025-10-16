@@ -22,11 +22,8 @@ static uint16_t get_string_length(const uint8_t* pstring);
  * - Mode: TX/RX
  * - Oversampling: 16
  *
- * After initialization, it sends a JSON string over UART describing
- * the configuration.
- *
- * @return TRUE if the UART was successfully initialized,
- *         FALSE otherwise.
+ * @return APP_OK if the UART was successfully initialized,
+ *         UART_ERR_INIT otherwise.
  */
 app_err_t uartInit() {
 	UART_InitTypeDef uart_init_config = {
@@ -57,7 +54,7 @@ app_err_t uartInit() {
  *
  * @param pstring  Pointer to the null-terminated string to transmit.
  *
- * @note if a NULL pointer is received, an error message is sent
+ * @return APP_OK if the message is sent correctly, otherwise the corresponding error
  *
  */
 app_err_t uartSendString(uint8_t* pstring) {
@@ -77,7 +74,7 @@ app_err_t uartSendString(uint8_t* pstring) {
  * @param pstring  Pointer to the string buffer to transmit.
  * @param size     Number of bytes to transmit.
  *
- * @note if a NULL pointer is received, an error message is sent
+ * @return APP_OK if the message is sent correctly, otherwise the corresponding error
  *
  */
 app_err_t uartSendStringSize(uint8_t* pstring, uint16_t size) {
@@ -97,7 +94,7 @@ app_err_t uartSendStringSize(uint8_t* pstring, uint16_t size) {
  * @param pstring  Pointer to the buffer where received data will be stored.
  * @param size     Number of bytes to receive, must be greater than 0.
  *
- * @note if a NULL pointer is received, an error message is sent
+ * @return APP_OK if the message is received correctly, otherwise the corresponding error
  *
  */
 app_err_t uartReceiveStringSize(uint8_t* pstring, uint16_t size) {

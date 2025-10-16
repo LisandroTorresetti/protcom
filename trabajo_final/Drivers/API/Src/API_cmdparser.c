@@ -15,6 +15,7 @@
 #define MAX_ARGS 3 // cmd + arg1 + arg2
 #define ERR_MSG_MAX_LENGTH 50
 
+// Possible states of the FSM
 typedef enum {
   IDLE,
   RECV_CMD,
@@ -77,7 +78,7 @@ static void echo(uint8_t* pstring);
 /**
  * @brief inits the cmdparser
  *
- * @return true if the cmdparser was initialized correctly, otherwise false
+ * @return CMDPARSER_ERR_INIT in case of an error, otherwise APP_OK
  *
  */
 app_err_t cmdparser_init() {
@@ -135,6 +136,10 @@ void cmdparser_read_cmd() {
 	}
 }
 
+/**
+ * @brief sets the state of the cmdparser
+ *
+ */
 void set_state(state_t state) {
 	system_state = state;
 }
@@ -149,6 +154,10 @@ void set_idle_state() {
 	idle_check_flag = false;
 }
 
+/**
+ * @brief sets an error state for the cmdparser
+ *
+ */
 void set_error_state(app_err_t err) {
 	set_state(ERROR_STATE);
 	error_code = err;
