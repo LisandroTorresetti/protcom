@@ -178,7 +178,7 @@ void cmdparser_reset() {
 /**
  * @brief handles the IDLE state
  *
- * Waits for a command, and if it receive one, it transitions to RECV state and the command is copied into the buffer.
+ * Waits for a command, and if it receive one, it transitions to RECV_CMD state and the command is copied into the buffer.
  * Otherwise, it remains in the same state.
  *
  */
@@ -204,10 +204,9 @@ void handle_idle_state() {
  * This function continues receiving and copying the user's command until a line break or carriage return occurs, and if so, it moves to state CMD_PARSE.
  *
  * @note This function can move to the following error states:
- * - CMD_ERR_TIMEOUT: if the newline o carriage returns never occurs within a time interval
- * - CMD_ERR_OVERFLOW: if the command length is greater than the max allowed length
- * - CMD_ERR_SYNTAX: if an invalid character was sent
+ * - CMDPARSER_ERR_OVERFLOW: if the command length is greater than the max allowed length
  *
+ * @note if its all good it pass to PARSE_CMD state
  */
 void handle_recv_state() {
 	uint8_t raw_cmd_buffer[MAX_CMD_LENGTH];
@@ -238,8 +237,8 @@ void handle_recv_state() {
 /**
  * @brief parses the command entered by the user
  *
- * If the command is valid, it puts the cmdparser in an CMD_OK state, otherwise to error states can be set:
- * - CMD_ERR_ARG: if the command has more args than the allowed amount (4)
+ * If the command is valid, it puts the cmdparser in an EXEC_CMD state, otherwise to error states can be set:
+ * - CMD_ERR_ARG: if the command has more args than the allowed amount (3)
  * - CMD_ERR_UNKNOWN: if the command is unknown
  *
  */
@@ -322,6 +321,10 @@ void handle_exec_state() {
 	cmdparser_reset();
 }
 
+/**
+ * @brief triggers the measurement process
+ *
+ */
 void handle_measure_state() {
 	uint8_t amount_of_args = 0;
 	for (uint8_t idx = 1; idx < MAX_ARGS; idx++) {
@@ -346,6 +349,11 @@ void handle_measure_state() {
 	set_state(READ_DATA);
 }
 
+/**
+ * @brief reads the measurement from the sensor
+ *
+ *
+ */
 void handle_read_data_state() {
 	// Clear values from last read
 	measurement = (ht_measurement_t){0};
@@ -358,6 +366,11 @@ void handle_read_data_state() {
 	set_state(SHOW_DATA);
 }
 
+/**
+ * @brief shows the result of the measurement on the LCD
+ *
+ *
+ */
 void handle_show_data_state() {
 	app_err_t err = show_measurement_action(&measurement);
 	if (err != APP_OK) {
@@ -368,6 +381,11 @@ void handle_show_data_state() {
 	cmdparser_reset();
 }
 
+/**
+ * @brief handle the reset of the HT sensor
+ *
+ *
+ */
 void handle_reset_state() {
 	app_err_t err = reset_action();
 	if (err != APP_OK) {
@@ -426,6 +444,12 @@ bool is_valid_char(uint8_t character) {
     return false;
 }
 
+/**
+ * @brief checks if the command exists
+ *
+ * @return true if it exists, otherwise false
+ *
+ */
 bool command_exists(uint8_t* cmd) {
 	uint8_t amount_of_commands = sizeof(VALID_CMDS) / sizeof(VALID_CMDS[0]);
 

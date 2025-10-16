@@ -7,7 +7,6 @@ static const uint32_t TIMEOUT = 1000;
 static UART_HandleTypeDef uart_handler;
 
 // Prototypes
-static void send_error_msg(uint8_t* error_msg);
 static uint16_t get_string_length(const uint8_t* pstring);
 
 /**
